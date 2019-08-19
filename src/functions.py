@@ -206,6 +206,7 @@ def df_preprocess(df):
     del df_zip_customer
     return df
 
+
 def df_final_add_dropoff_zip(df):
     df_zip_customer = get_loc_data(df["dropoff_lat"], df["dropoff_lon"])[
         ["zipcodes", "pop", "median_home_value"]
@@ -215,6 +216,10 @@ def df_final_add_dropoff_zip(df):
         "pop_dropoff",
         "median_home_value_dropoff",
     ]
+
+    df["merchant_id"] = (
+        df["pickup_place"] + df["zipcodes"].apply(str) + df["pickup_lat"].apply(str)
+    )
 
     # create new df with df_zip
     df = pd.concat([df, df_zip_customer], axis=1)
