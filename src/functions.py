@@ -2,6 +2,7 @@ root_path = "/Users/ginariddle/Desktop/g.school/my_projects/Jumpman23"
 source = "src"
 data = "data"
 
+import os
 import string
 import googlemaps
 from uszipcode import SearchEngine
@@ -21,13 +22,12 @@ from lists import (
     mode_dict,
     df_final_cols,
 )
-import os
+
 
 search = SearchEngine(simple_zipcode=True)
 os.chdir(root_path)
 with open("data/api_key.txt") as f:
     api_key = f.readline()
-
 googlem = googlemaps.Client(key=api_key)
 punctuation = string.punctuation
 
@@ -42,6 +42,26 @@ def get_loc_data(series_lat, series_lon):
     Overview: Used to create df_zip which gets concated to original df in df_preprocess func
     """
     counter = 0
+
+    zipcodes = []
+    city = []
+    median_income = []
+    median_home_value = []
+    pop = []
+    pop_density = []
+    land_area_in_sqmi = []
+    state = []
+
+    d = {
+        "zipcodes": zipcodes,
+        "city": city,
+        "median_income": median_income,
+        "median_home_value": median_home_value,
+        "pop": pop,
+        "pop_density": pop_density,
+        "land_area_in_sqmi": land_area_in_sqmi,
+        "state": state,
+    }
 
     for a, b in zip(series_lat.values, series_lon.values):
         result = search.by_coordinates(a, b, returns=1, radius=2)[0]
@@ -148,6 +168,11 @@ def df_preprocess(df):
     """
     Overview: Used to initially clean original file import by changing datatypes and adding cols
     """
+
+    # These call googlemap api to calc duration and distance of trip from pickup to dropoff
+    # exp_duration = expected_duration(df)
+    # exp_distance = expected_distance(df)
+
     # datatype updates
     for col in df.columns[df.columns.str.contains("when")]:
         df[col] = pd.to_datetime(df[col])
@@ -166,8 +191,32 @@ def df_preprocess(df):
 
     # location df
     df_zip = get_loc_data(df["pickup_lat"], df["pickup_lon"])
+    df_zip_customer = get_loc_data(df["dropoff_lat"], df["dropoff_lon"])[
+        ["zipcodes", "pop", "median_home_value"]
+    ]
+    df_zip_customer.columns = [
+        "zipcodes_dropoff",
+        "pop_dropoff",
+        "median_home_value_dropoff",
+    ]
 
     # create new df with df_zip
-    df = pd.concat([df, df_zip], axis=1)
+    df = pd.concat([df, df_zip, df_zip_customer], axis=1)
     del df_zip
+    del df_zip_customer
     return df
+
+def df_final_add_dropoff_zip(df):
+    df_zip_customer = get_loc_data(df["dropoff_lat"], df["dropoff_lon"])[
+        ["zipcodes", "pop", "median_home_value"]
+    ]
+    df_zip_customer.columns = [
+        "zipcodes_dropoff",
+        "pop_dropoff",
+        "median_home_value_dropoff",
+    ]
+
+    # create new df with df_zip
+    df = pd.concat([df, df_zip_customer], axis=1)
+    del df_zip_customer
+    return df[df_final_cols]
